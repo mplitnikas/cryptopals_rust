@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fs;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let file = fs::read("4.txt")?;
+    let file = fs::read("samples/s1/4.txt")?;
     let lines = file.split(|&c| c == '\n' as u8);
 
     let mut max_score = 0;
