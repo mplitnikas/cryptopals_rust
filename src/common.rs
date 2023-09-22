@@ -28,6 +28,13 @@ pub mod utils {
 
         buf
     }
+
+    pub fn hamming_dist(a: &str, b: &str) -> usize {
+        a.bytes()
+            .zip(b.bytes())
+            .map(|(x, y)| (x ^ y).count_ones())
+            .sum::<u32>() as usize
+    }
 }
 
 #[cfg(test)]
@@ -43,5 +50,13 @@ mod tests {
         let res = bytes_to_b64(&bytes);
 
         assert_eq!(res, b64);
+    }
+
+    #[test]
+    fn test_hamming_dist() {
+        let string1 = "this is a test";
+        let string2 = "wokka wokka!!!";
+
+        assert_eq!(hamming_dist(string1, string2), 37);
     }
 }
