@@ -8,7 +8,7 @@ pub mod caesar {
         let filtered_text: Vec<char> = data
             .to_lowercase()
             .chars()
-            .filter(|&c| c.is_alphabetic())
+            .filter(|&c| c.is_alphabetic() || c.is_whitespace())
             .collect();
         let filtered_len = filtered_text.len();
 
