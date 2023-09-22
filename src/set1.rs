@@ -36,7 +36,7 @@ pub mod utils {
         let filtered_text: Vec<char> = data
             .to_lowercase()
             .chars()
-            .filter(|&c| c >= 'a' && c <= 'z')
+            .filter(|&c| c.is_alphabetic())
             .collect();
         let filtered_len = filtered_text.len();
 
@@ -46,7 +46,9 @@ pub mod utils {
                 score += 26 - value;
             }
         }
+        // average score so we're not biased on string length
         score = score / (filtered_len + 1);
+        // deduct points for non-letter chars
         score.saturating_sub(data.len() - filtered_len) as u8
     }
 
