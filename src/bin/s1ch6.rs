@@ -1,12 +1,8 @@
 use cryptopals::common::{caesar, utils};
 use std::error::Error;
-use std::fs;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let file = fs::read("samples/s1/6.txt")?;
-    // there has to be a better way to do this
-    let file: Vec<u8> = file.iter().filter(|&c| *c != '\n' as u8).cloned().collect();
-    let bytes = utils::b64_to_bytes(&String::from_utf8(file).unwrap());
+    let bytes = utils::bytes_from_b64_file("samples/s1/6.txt");
 
     let possible_keysizes = find_best_keysizes(&bytes);
 
@@ -59,8 +55,6 @@ fn find_best_keysizes(data: &[u8]) -> Vec<usize> {
         best_keysizes.push((keysize, dist));
         best_keysizes.sort_by(|a, b| a.1.partial_cmp(&b.1).expect("can't compare!?"))
     }
-
-    println!("all best keysizes {:?}", best_keysizes);
     best_keysizes[..5].to_vec().iter().map(|x| x.0).collect()
 }
 

@@ -2,6 +2,8 @@
 pub mod utils {
     use base64::{engine::general_purpose, Engine as _};
     use hex;
+    use std::fs;
+    use std::path::Path;
 
     pub fn b64_to_bytes(data: &str) -> Vec<u8> {
         general_purpose::STANDARD
@@ -10,6 +12,11 @@ pub mod utils {
     }
     pub fn bytes_to_b64(data: &[u8]) -> String {
         general_purpose::STANDARD_NO_PAD.encode(data)
+    }
+    pub fn bytes_from_b64_file<P: AsRef<Path>>(path: P) -> Vec<u8> {
+        let file = fs::read(path).expect("couldn't open file");
+        let file: Vec<u8> = file.iter().filter(|&c| *c != '\n' as u8).cloned().collect();
+        b64_to_bytes(&String::from_utf8(file).unwrap())
     }
 
     pub fn hex_to_bytes(data: &str) -> Vec<u8> {
