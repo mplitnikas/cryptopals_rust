@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 pub mod utils {
     use base64::{engine::general_purpose, Engine as _};
     use hex;
@@ -45,7 +44,7 @@ pub mod utils {
 }
 
 pub mod caesar {
-    use crate::common::utils;
+    use super::utils;
     use std::collections::HashMap;
 
     pub fn score_letter_frequency(data: &str) -> f32 {
@@ -121,6 +120,19 @@ pub mod caesar {
     }
 }
 
+pub mod aes {
+    use openssl::symm::{decrypt, encrypt, Cipher};
+
+    pub fn aes_ecb_encrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+        let cipher = Cipher::aes_128_ecb();
+        encrypt(cipher, key, None, data).unwrap()
+    }
+    pub fn aes_ecb_decrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+        let cipher = Cipher::aes_128_ecb();
+        decrypt(cipher, key, None, data).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod utils_tests {
     use super::utils::*;
@@ -159,5 +171,20 @@ mod caesar_tests {
         );
 
         assert!(english_score > gibberish_score);
+    }
+}
+
+#[cfg(test)]
+mod aes_tests {
+    use super::*;
+
+    #[test]
+    fn test_aes_encrypt_decrypt() {
+        let data = vec![123; 200];
+        let key = "SASQUATCH JERSEY".as_bytes();
+        let encrypted = aes::aes_ecb_encrypt(&data, key);
+        let decrypted = aes::aes_ecb_decrypt(&encrypted, key);
+
+        assert_eq!(data, decrypted);
     }
 }
