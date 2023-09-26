@@ -1,5 +1,4 @@
-use cryptopals::caesar_tools::caesar;
-use cryptopals::common::utils;
+use cryptopals::common::{caesar, utils};
 use std::error::Error;
 use std::fs;
 
@@ -10,7 +9,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let bytes = utils::b64_to_bytes(&String::from_utf8(file).unwrap());
 
     let possible_keysizes = find_best_keysizes(&bytes);
-    println!("{:?}", possible_keysizes);
 
     let mut best_score = 0.0;
     let mut best_key: Vec<u8> = vec![];

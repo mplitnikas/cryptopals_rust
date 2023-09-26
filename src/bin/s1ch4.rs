@@ -1,5 +1,4 @@
-use cryptopals::caesar_tools::caesar;
-use cryptopals::common::utils;
+use cryptopals::common::{caesar, utils};
 use std::error::Error;
 use std::fs;
 
