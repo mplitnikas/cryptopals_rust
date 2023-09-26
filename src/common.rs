@@ -17,6 +17,13 @@ pub mod utils {
         let file: Vec<u8> = file.iter().filter(|&c| *c != '\n' as u8).cloned().collect();
         b64_to_bytes(&String::from_utf8(file).unwrap())
     }
+    pub fn lines_from_b64_file<P: AsRef<Path>>(path: P) -> Vec<Vec<u8>> {
+        let file = String::from_utf8(fs::read(path).expect("couldn't open file")).unwrap();
+        file.split(|c| c == '\n')
+            .map(|line| b64_to_bytes(line))
+            .filter(|l| !l.is_empty())
+            .collect()
+    }
 
     pub fn hex_to_bytes(data: &str) -> Vec<u8> {
         hex::decode(data).expect("invalid hex string")
@@ -117,6 +124,17 @@ pub mod caesar {
             best_byte,
             score,
         )
+    }
+
+    pub fn transpose_by_keysize(data: &[u8], keysize: usize) -> Vec<Vec<u8>> {
+        let mut output_vec: Vec<Vec<u8>> = vec![Vec::new(); keysize];
+        data.iter()
+            .zip((0..keysize).cycle())
+            .for_each(|(&byte, index)| {
+                output_vec[index].push(byte);
+            });
+
+        output_vec
     }
 }
 

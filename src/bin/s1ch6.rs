@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut best_score = 0.0;
     let mut best_key: Vec<u8> = vec![];
     for keysize in possible_keysizes {
-        let chunks = transpose_by_keysize(&bytes, keysize);
+        let chunks = caesar::transpose_by_keysize(&bytes, keysize);
         let key_bytes = chunks
             .iter()
             .map(|chunk| caesar::find_single_byte_xor_decode(chunk))
@@ -58,17 +58,6 @@ fn find_best_keysizes(data: &[u8]) -> Vec<usize> {
     best_keysizes[..5].to_vec().iter().map(|x| x.0).collect()
 }
 
-fn transpose_by_keysize(data: &[u8], keysize: usize) -> Vec<Vec<u8>> {
-    let mut output_vec: Vec<Vec<u8>> = vec![Vec::new(); keysize];
-    data.iter()
-        .zip((0..keysize).cycle())
-        .for_each(|(&byte, index)| {
-            output_vec[index].push(byte);
-        });
-
-    output_vec
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -89,7 +78,7 @@ mod tests {
     #[test]
     fn test_split_keysize_2() {
         let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let split = transpose_by_keysize(&data, 2);
+        let split = caesar::transpose_by_keysize(&data, 2);
 
         println!("split: {:?}", split);
         // panic!();
@@ -102,7 +91,7 @@ mod tests {
     #[test]
     fn test_split_keysize_5() {
         let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let split = transpose_by_keysize(&data, 5);
+        let split = caesar::transpose_by_keysize(&data, 5);
 
         println!("split: {:?}", split);
         assert_eq!(split.len(), 5);
@@ -116,7 +105,7 @@ mod tests {
     #[test]
     fn test_split_keysize_big() {
         let data: Vec<u8> = (0..11).cycle().take(300).collect();
-        let split = transpose_by_keysize(&data, 11);
+        let split = caesar::transpose_by_keysize(&data, 11);
 
         assert_eq!(split.len(), 11);
         for i in 0..11 {
