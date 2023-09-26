@@ -4,7 +4,7 @@ pub mod utils {
     use hex;
 
     pub fn b64_to_bytes(data: &str) -> Vec<u8> {
-        general_purpose::STANDARD_NO_PAD
+        general_purpose::STANDARD
             .decode(data)
             .expect("invalid b64 string")
     }
@@ -29,9 +29,9 @@ pub mod utils {
         buf
     }
 
-    pub fn hamming_dist(a: &str, b: &str) -> usize {
-        a.bytes()
-            .zip(b.bytes())
+    pub fn hamming_dist(a: &[u8], b: &[u8]) -> usize {
+        a.iter()
+            .zip(b.iter())
             .map(|(x, y)| (x ^ y).count_ones())
             .sum::<u32>() as usize
     }
@@ -57,6 +57,6 @@ mod tests {
         let string1 = "this is a test";
         let string2 = "wokka wokka!!!";
 
-        assert_eq!(hamming_dist(string1, string2), 37);
+        assert_eq!(hamming_dist(string1.as_bytes(), string2.as_bytes()), 37);
     }
 }

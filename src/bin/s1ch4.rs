@@ -7,7 +7,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let file = fs::read("samples/s1/4.txt")?;
     let lines = file.split(|&c| c == '\n' as u8);
 
-    let mut max_score = 0;
+    let mut max_score = 0.0;
     let mut xor_char: u8 = 0;
     let mut output_str: String = "".to_string();
     for line in lines {
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
     println!("output {output_str}");
-    println!("XOR'd with {xor_char}");
+    println!("XOR'd with {}", xor_char as char);
     println!("score {max_score}");
     Ok(())
 }

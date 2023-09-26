@@ -6,4 +6,5 @@ fn main() {
 
     let output = utils::bytes_to_hex(&utils::xor_bytes(input.as_bytes(), "ICE".as_bytes()));
     assert_eq!(output, expected);
+    println!("confirmed multi character repeating XOR works :DDD");
 }
