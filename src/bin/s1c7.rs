@@ -1,4 +1,4 @@
-use cryptopals::common::{aes, caesar, utils};
+use cryptopals::common::{aes, utils};
 
 fn main() {
     let cyphertext = utils::bytes_from_b64_file("samples/s1/7.txt");
