@@ -139,13 +139,28 @@ pub mod caesar {
 }
 
 pub mod aes {
-    use openssl::symm::{decrypt, encrypt, Cipher};
+    use super::utils;
+    use openssl::symm::{decrypt, encrypt, Cipher, Crypter, Mode};
 
-    pub fn aes_ecb_encrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+    fn encoder_crypter(key: &[u8]) -> Crypter {
+        Crypter::new(Cipher::aes_128_ecb(), Mode::Encrypt, key, None).unwrap()
+    }
+    fn decoder_crypter(key: &[u8]) -> Crypter {
+        Crypter::new(Cipher::aes_128_ecb(), Mode::Encrypt, key, None).unwrap()
+    }
+
+    pub fn ecb_encrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+        // let block_size = Cipher::aes_128_ecb().block_size();
+        // let mut crypter = encoder_crypter(key);
+        // let mut output = vec![0; block_size * 2];
+        // crypter.update(data, &mut output).unwrap();
+        // crypter.finalize(&mut output).unwrap();
+        // println!("out {:?}", output);
+        // output
         let cipher = Cipher::aes_128_ecb();
         encrypt(cipher, key, None, data).unwrap()
     }
-    pub fn aes_ecb_decrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+    pub fn ecb_decrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
         let cipher = Cipher::aes_128_ecb();
         decrypt(cipher, key, None, data).unwrap()
     }
@@ -162,6 +177,50 @@ pub mod aes {
         let mut output = vec![];
         output.extend_from_slice(data);
         output.extend_from_slice(&pad);
+        output
+    }
+
+    pub fn cbc_single_encrypt(block: &[u8], key: &[u8], prev_block: &[u8]) -> Vec<u8> {
+        let xored = utils::xor_bytes(block, prev_block);
+        ecb_encrypt(&xored, key)
+    }
+
+    pub fn cbc_single_decrypt(block: &[u8], key: &[u8], prev_block: &[u8]) -> Vec<u8> {
+        let decrypted = ecb_decrypt(block, key);
+        utils::xor_bytes(&decrypted, prev_block)
+    }
+
+    pub fn cbc_encrypt(data: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
+        let iv: &[u8] = iv.unwrap_or(&[0u8; 16]);
+        let data = pkcs7_pad(data, 16);
+        assert_eq!(&data.len() % 16, 0);
+        let mut blocks: Vec<&[u8]> = vec![];
+        blocks.push(iv);
+        for chunk in data.chunks(16) {
+            blocks.push(chunk);
+        }
+        let mut output: Vec<u8> = vec![];
+        for window in blocks.windows(2) {
+            if let [prev, curr] = window {
+                output.extend_from_slice(&cbc_single_encrypt(curr, key, prev));
+            }
+        }
+        output
+    }
+
+    pub fn cbc_decrypt(data: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
+        let iv: &[u8] = iv.unwrap_or(&[0u8; 16]);
+        let mut blocks: Vec<&[u8]> = vec![];
+        blocks.push(iv);
+        for chunk in data.chunks(16) {
+            blocks.push(chunk);
+        }
+        let mut output: Vec<u8> = vec![];
+        for window in blocks.windows(2) {
+            if let [prev, curr] = window {
+                output.extend_from_slice(&cbc_single_decrypt(curr, key, prev));
+            }
+        }
         output
     }
 }
@@ -212,11 +271,11 @@ mod aes_tests {
     use super::aes::*;
 
     #[test]
-    fn test_aes_encrypt_decrypt() {
+    fn test_ecb_encrypt_decrypt() {
         let data = vec![123; 200];
         let key = "SASQUATCH JERSEY".as_bytes();
-        let encrypted = aes_ecb_encrypt(&data, key);
-        let decrypted = aes_ecb_decrypt(&encrypted, key);
+        let encrypted = ecb_encrypt(&data, key);
+        let decrypted = ecb_decrypt(&encrypted, key);
 
         assert_eq!(data, decrypted);
     }
@@ -225,24 +284,51 @@ mod aes_tests {
     fn test_pkcs7_pad_shorter() {
         let data = "hello world".as_bytes();
 
-        let pad16 = pkcs7_pad(data, 16);
-        assert_eq!(pad16.len(), 16);
-        assert_eq!(pad16[pad16.len() - 1], 5);
+        let pad = pkcs7_pad(data, 16);
+        assert_eq!(pad.len(), 16);
+        assert_eq!(pad[pad.len() - 1], 5);
+        assert_eq!(pad.len() % 16, 0);
     }
     #[test]
     fn test_pkcs7_pad_equal() {
         let data = "hello world".as_bytes();
 
-        let pad16 = pkcs7_pad(data, 11);
-        assert_eq!(pad16.len(), 22);
-        assert_eq!(pad16[pad16.len() - 1], 11);
+        let pad = pkcs7_pad(data, 11);
+        assert_eq!(pad.len(), 22);
+        assert_eq!(pad[pad.len() - 1], 11);
+        assert_eq!(pad.len() % 11, 0);
     }
     #[test]
     fn test_pkcs7_pad_longer() {
         let data = "hello world hello world hello world".as_bytes();
 
-        let pad16 = pkcs7_pad(data, 16);
-        assert_eq!(pad16.len(), 48);
-        assert_eq!(pad16[pad16.len() - 1], 13);
+        let pad = pkcs7_pad(data, 16);
+        assert_eq!(pad.len(), 48);
+        assert_eq!(pad[pad.len() - 1], 13);
+        assert_eq!(pad.len() % 48, 0);
+    }
+
+    #[test]
+    fn test_single_cbc_encrypt_decrypt() {
+        let data = vec![123; 15];
+        let key = "SASQUATCH JERSEY".as_bytes();
+        let iv = vec![0u8; 16];
+        let encrypted = cbc_single_encrypt(&data, key, &iv);
+        let decrypted = cbc_single_decrypt(&encrypted, key, &iv);
+
+        assert_eq!(encrypted.len(), 16);
+        assert_eq!(data, decrypted);
+    }
+
+    #[test]
+    fn test_cbc_encrypt_decrypt() {
+        let data = vec![123; 200];
+        let key = "SASQUATCH JERSEY".as_bytes();
+        let iv = vec![0u8; 16];
+        let encrypted = cbc_encrypt(&data, key, Some(&iv));
+        println!("encrypted {:?}", encrypted);
+        let decrypted = cbc_decrypt(&encrypted, key, Some(&iv));
+
+        assert_eq!(data, decrypted);
     }
 }
