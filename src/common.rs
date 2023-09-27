@@ -149,6 +149,21 @@ pub mod aes {
         let cipher = Cipher::aes_128_ecb();
         decrypt(cipher, key, None, data).unwrap()
     }
+
+    pub fn pkcs7_pad(data: &[u8], blocksize: usize) -> Vec<u8> {
+        let diff = match data.len().partial_cmp(&blocksize) {
+            Some(std::cmp::Ordering::Less) => blocksize - data.len(),
+            Some(std::cmp::Ordering::Equal) => blocksize, // pad the whole blocksize? or zero
+            Some(std::cmp::Ordering::Greater) => blocksize - (data.len() % blocksize),
+            None => panic!("comparison failed"),
+        };
+        let pad = vec![diff as u8; diff];
+
+        let mut output = vec![];
+        output.extend_from_slice(data);
+        output.extend_from_slice(&pad);
+        output
+    }
 }
 
 #[cfg(test)]
@@ -194,15 +209,40 @@ mod caesar_tests {
 
 #[cfg(test)]
 mod aes_tests {
-    use super::*;
+    use super::aes::*;
 
     #[test]
     fn test_aes_encrypt_decrypt() {
         let data = vec![123; 200];
         let key = "SASQUATCH JERSEY".as_bytes();
-        let encrypted = aes::aes_ecb_encrypt(&data, key);
-        let decrypted = aes::aes_ecb_decrypt(&encrypted, key);
+        let encrypted = aes_ecb_encrypt(&data, key);
+        let decrypted = aes_ecb_decrypt(&encrypted, key);
 
         assert_eq!(data, decrypted);
+    }
+
+    #[test]
+    fn test_pkcs7_pad_shorter() {
+        let data = "hello world".as_bytes();
+
+        let pad16 = pkcs7_pad(data, 16);
+        assert_eq!(pad16.len(), 16);
+        assert_eq!(pad16[pad16.len() - 1], 5);
+    }
+    #[test]
+    fn test_pkcs7_pad_equal() {
+        let data = "hello world".as_bytes();
+
+        let pad16 = pkcs7_pad(data, 11);
+        assert_eq!(pad16.len(), 22);
+        assert_eq!(pad16[pad16.len() - 1], 11);
+    }
+    #[test]
+    fn test_pkcs7_pad_longer() {
+        let data = "hello world hello world hello world".as_bytes();
+
+        let pad16 = pkcs7_pad(data, 16);
+        assert_eq!(pad16.len(), 48);
+        assert_eq!(pad16[pad16.len() - 1], 13);
     }
 }
