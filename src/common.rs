@@ -175,7 +175,7 @@ pub mod aes {
     pub fn pkcs7_pad(data: &[u8], blocksize: usize) -> Vec<u8> {
         let diff = match data.len().partial_cmp(&blocksize) {
             Some(std::cmp::Ordering::Less) => blocksize - data.len(),
-            Some(std::cmp::Ordering::Equal) => blocksize, // pad the whole blocksize? or zero
+            Some(std::cmp::Ordering::Equal) => 0,
             Some(std::cmp::Ordering::Greater) => blocksize - (data.len() % blocksize),
             None => panic!("comparison failed"),
         };
@@ -185,6 +185,20 @@ pub mod aes {
         output.extend_from_slice(data);
         output.extend_from_slice(&pad);
         output
+    }
+
+    pub fn pkcs7_unpad(data: &[u8]) -> Vec<u8> {
+        let last_byte = data[data.len() - 1] as usize;
+        if last_byte >= data.len() {
+            // can't be padding if it's longer than data
+            return data.to_vec();
+        }
+        let maybe_padding = &data[data.len() - last_byte..];
+        if maybe_padding.len() == last_byte && maybe_padding.iter().all(|&x| x == last_byte as u8) {
+            data[0..data.len() - last_byte].to_vec()
+        } else {
+            data.to_vec() // none, or maybe invalid padding
+        }
     }
 
     pub fn cbc_single_encrypt(block: &[u8], key: &[u8], prev_block: &[u8]) -> Vec<u8> {
@@ -199,7 +213,7 @@ pub mod aes {
 
     pub fn cbc_encrypt(data: &[u8], key: &[u8], iv: Option<&[u8]>) -> Vec<u8> {
         let iv: &[u8] = iv.unwrap_or(&[0u8; 16]);
-        // let data = pkcs7_pad(data, 16);
+        let data = pkcs7_pad(data, 16);
         assert_eq!(&data.len() % 16, 0);
         let mut blocks: Vec<&[u8]> = vec![];
         blocks.push(iv);
@@ -230,7 +244,7 @@ pub mod aes {
                 output.extend_from_slice(&res);
             }
         }
-        output
+        pkcs7_unpad(&output)
     }
 }
 
@@ -293,9 +307,8 @@ mod aes_tests {
         let data = "hello world".as_bytes();
 
         let pad = pkcs7_pad(data, 11);
-        assert_eq!(pad.len(), 22);
-        assert_eq!(pad[pad.len() - 1], 11);
-        assert_eq!(pad.len() % 11, 0);
+        assert_eq!(pad.len(), 11);
+        assert_eq!(pad[pad.len() - 1], 'd' as u8); // not padded
     }
     #[test]
     fn test_pkcs7_pad_longer() {
@@ -305,6 +318,21 @@ mod aes_tests {
         assert_eq!(pad.len(), 48);
         assert_eq!(pad[pad.len() - 1], 13);
         assert_eq!(pad.len() % 48, 0);
+    }
+
+    #[test]
+    fn test_pkcs7_unpad() {
+        let mut data = "hello world".as_bytes().to_vec();
+        data.extend_from_slice(&[4, 4, 4, 4]);
+        let data = &data[..];
+
+        assert_eq!(pkcs7_unpad(data), "hello world".as_bytes());
+    }
+    #[test]
+    fn test_pkcs7_unpad_no_pad() {
+        let data = "hello world".as_bytes();
+
+        assert_eq!(pkcs7_unpad(data), "hello world".as_bytes());
     }
 
     #[test]
