@@ -149,18 +149,16 @@ pub mod aes {
     type Aes128EcbEnc = ecb::Encryptor<aes::Aes128>;
     type Aes128EcbDec = ecb::Decryptor<aes::Aes128>;
 
-    pub fn ecb_encrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
-        if data.len() != 16 {
-            panic!("invalid data length");
-        };
+    pub fn ecb_encrypt_single(data: &[u8], key: &[u8]) -> Vec<u8> {
+        let data = pkcs7_pad(data, 16);
 
         let mut buf = [0u8; 16];
-        buf.copy_from_slice(data);
+        buf.copy_from_slice(&data);
         Aes128EcbEnc::new(key.into()).encrypt_block_mut((&mut buf).into());
 
         buf.to_vec()
     }
-    pub fn ecb_decrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+    pub fn ecb_decrypt_single(data: &[u8], key: &[u8]) -> Vec<u8> {
         if data.len() != 16 {
             panic!("invalid data length");
         };
@@ -169,7 +167,22 @@ pub mod aes {
         buf.copy_from_slice(data);
         Aes128EcbDec::new(key.into()).decrypt_block_mut((&mut buf).into());
 
-        buf.to_vec()
+        let res = buf.to_vec();
+        pkcs7_unpad(&res)
+    }
+    pub fn ecb_encrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+        let mut res = vec![];
+        for chunk in data.chunks(16) {
+            res.extend(ecb_encrypt_single(chunk, key));
+        }
+        res
+    }
+    pub fn ecb_decrypt(data: &[u8], key: &[u8]) -> Vec<u8> {
+        let mut res = vec![];
+        for chunk in data.chunks(16) {
+            res.extend(ecb_decrypt_single(chunk, key));
+        }
+        res
     }
 
     pub fn pkcs7_pad(data: &[u8], blocksize: usize) -> Vec<u8> {
@@ -203,11 +216,11 @@ pub mod aes {
 
     pub fn cbc_single_encrypt(block: &[u8], key: &[u8], prev_block: &[u8]) -> Vec<u8> {
         let xored = utils::xor_bytes(block, prev_block);
-        ecb_encrypt(&xored, key)
+        ecb_encrypt_single(&xored, key)
     }
 
     pub fn cbc_single_decrypt(block: &[u8], key: &[u8], prev_block: &[u8]) -> Vec<u8> {
-        let decrypted = ecb_decrypt(block, key);
+        let decrypted = ecb_decrypt_single(block, key);
         utils::xor_bytes(&decrypted, prev_block)
     }
 
@@ -245,6 +258,26 @@ pub mod aes {
             }
         }
         pkcs7_unpad(&output)
+    }
+
+    pub fn encryption_oracle(data: &[u8]) -> String {
+        let keysize = 16;
+        let chunks: Vec<Vec<u8>> = data.chunks(keysize).take(15).map(|c| c.to_vec()).collect();
+
+        let mut sum = 0;
+        for i in 0..chunks.len() {
+            for j in i + 1..chunks.len() {
+                if &chunks[i] == &chunks[j] {
+                    sum += 1;
+                }
+            }
+        }
+
+        if sum > 0 {
+            "ecb".to_string()
+        } else {
+            "cbc".to_string()
+        }
     }
 }
 

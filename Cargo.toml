@@ -10,3 +10,4 @@ aes = "0.8.3"
 base64 = "0.21.4"
 ecb = { version = "0.1.2", default-features = false }
 hex = "0.4.3"
+rand = "0.8.5"
