@@ -4,7 +4,7 @@ use std::error::Error;
 fn main() -> Result<(), Box<dyn Error>> {
     let bytes = utils::bytes_from_b64_file("samples/s1/6.txt");
 
-    let possible_keysizes = find_best_keysizes(&bytes);
+    let possible_keysizes = caesar::find_best_keysizes(&bytes);
 
     let mut best_score = 0.0;
     let mut best_key: Vec<u8> = vec![];
@@ -32,32 +32,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn find_best_keysizes(data: &[u8]) -> Vec<usize> {
-    let mut best_keysizes: Vec<(usize, f32)> = vec![];
-
-    for keysize in 2..=40 {
-        let chunks: Vec<Vec<u8>> = data.chunks(keysize).take(4).map(|c| c.to_vec()).collect();
-
-        let mut sum = 0;
-        let mut count = 0;
-        for i in 0..chunks.len() {
-            for j in i + 1..chunks.len() {
-                let result = utils::hamming_dist(&chunks[i], &chunks[j]);
-                sum += result;
-                count += 1;
-            }
-        }
-        // average of hamming distances
-        let dist = sum as f32 / count as f32;
-        // normalize to keysize
-        let dist = dist / keysize as f32;
-
-        best_keysizes.push((keysize, dist));
-        best_keysizes.sort_by(|a, b| a.1.partial_cmp(&b.1).expect("can't compare!?"))
-    }
-    best_keysizes[..5].to_vec().iter().map(|x| x.0).collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,7 +44,7 @@ mod tests {
             .cycle()
             .take(500)
             .collect();
-        let keysizes = find_best_keysizes(&data);
+        let keysizes = caesar::find_best_keysizes(&data);
 
         assert_eq!(keysizes[0], 5);
     }

@@ -2,16 +2,15 @@ use cryptopals::common::aes;
 use rand::{random, Rng};
 
 fn main() {
-    for _ in 0..10 {
+    let rounds = 100;
+    for _ in 0..rounds {
         let data = vec!["A"; 50].join("");
         let data = data.as_bytes();
         let (cyphertext, use_cbc) = encrypt_with_random_mode(data);
-        let cipher_mode = aes::encryption_oracle(&cyphertext);
-        // println!("detecting {}", if use_cbc { "cbc" } else { "ecb" });
-        assert_eq!(cipher_mode == "cbc", use_cbc);
-        // println!("correct!");
-        // println!("");
+        let cipher_mode = aes::encryption_oracle(&cyphertext, 16);
+        assert_eq!(cipher_mode == aes::Mode::Cbc, use_cbc);
     }
+    println!("successfully tested {rounds} times");
 }
 
 fn encrypt_with_random_mode(data: &[u8]) -> (Vec<u8>, bool) {
@@ -24,7 +23,6 @@ fn encrypt_with_random_mode(data: &[u8]) -> (Vec<u8>, bool) {
     plaintext.extend(data);
     plaintext.extend(generate_random_string(rnd.gen_range(5..=10)).as_bytes());
 
-    // println!("{:?}", String::from_utf8(plaintext.to_vec()).unwrap());
     let use_cbc = random(); // true->cbc, false->ecb
 
     let cyphertext: Vec<u8>;
@@ -37,9 +35,6 @@ fn encrypt_with_random_mode(data: &[u8]) -> (Vec<u8>, bool) {
     } else {
         cyphertext = aes::ecb_encrypt(&plaintext, key);
     }
-    // for chunk in cyphertext.chunks(16) {
-    //     println!("{:?}", chunk);
-    // }
     (cyphertext, use_cbc)
 }
 

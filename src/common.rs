@@ -126,6 +126,32 @@ pub mod caesar {
         )
     }
 
+    pub fn find_best_keysizes(data: &[u8]) -> Vec<usize> {
+        let mut best_keysizes: Vec<(usize, f32)> = vec![];
+
+        for keysize in 2..=40 {
+            let chunks: Vec<Vec<u8>> = data.chunks(keysize).take(4).map(|c| c.to_vec()).collect();
+
+            let mut sum = 0;
+            let mut count = 0;
+            for i in 0..chunks.len() {
+                for j in i + 1..chunks.len() {
+                    let result = utils::hamming_dist(&chunks[i], &chunks[j]);
+                    sum += result;
+                    count += 1;
+                }
+            }
+            // average of hamming distances
+            let dist = sum as f32 / count as f32;
+            // normalize to keysize
+            let dist = dist / keysize as f32;
+
+            best_keysizes.push((keysize, dist));
+            best_keysizes.sort_by(|a, b| a.1.partial_cmp(&b.1).expect("can't compare!?"))
+        }
+        best_keysizes[..5].to_vec().iter().map(|x| x.0).collect()
+    }
+
     pub fn transpose_by_keysize(data: &[u8], keysize: usize) -> Vec<Vec<u8>> {
         let mut output_vec: Vec<Vec<u8>> = vec![Vec::new(); keysize];
         data.iter()
@@ -260,9 +286,19 @@ pub mod aes {
         pkcs7_unpad(&output)
     }
 
-    pub fn encryption_oracle(data: &[u8]) -> String {
-        let keysize = 16;
-        let chunks: Vec<Vec<u8>> = data.chunks(keysize).take(15).map(|c| c.to_vec()).collect();
+    #[derive(PartialEq, Eq, Debug)]
+    pub enum Mode {
+        Ecb,
+        Cbc,
+    }
+
+    pub fn encryption_oracle(data: &[u8], keysize: usize) -> Mode {
+        let num_chunks = data.len() / keysize;
+        let chunks: Vec<Vec<u8>> = data
+            .chunks(keysize)
+            .take(num_chunks)
+            .map(|c| c.to_vec())
+            .collect();
 
         let mut sum = 0;
         for i in 0..chunks.len() {
@@ -274,9 +310,9 @@ pub mod aes {
         }
 
         if sum > 0 {
-            "ecb".to_string()
+            Mode::Ecb
         } else {
-            "cbc".to_string()
+            Mode::Cbc
         }
     }
 }
