@@ -24,30 +24,29 @@ fn main() {
         }
     }
 
-    let table = build_rainbow_table(blocksize, random_key);
-    let mut test_text = vec!['A' as u8; blocksize - 1];
-    test_text.extend(target_string);
-    let cyphertext = aes::ecb_encrypt(&test_text, random_key);
-    if let Some(res) = table.get(&cyphertext[0..blocksize]) {
-        println!("found byte {}", *res as char);
-    } else {
-        println!("not found?");
+    let mut decrypted: Vec<u8> = vec![];
+    let mut i = 0;
+    loop {
+        let base_text;
+        if decrypted.is_empty() {
+            base_text = None;
+        } else {
+            base_text = Some(decrypted.clone());
+        }
+        let table = build_rainbow_table(blocksize, random_key, base_text);
+        let mut test_text = vec!['A' as u8; blocksize - i];
+        test_text.extend(target_string.clone());
+        let cyphertext = aes::ecb_encrypt(&test_text, random_key);
+        if let Some(res) = table.get(&cyphertext[0..blocksize]) {
+            decrypted.push(*res);
+            i += 1;
+            println!("found {}", *res as char);
+            println!("{}", String::from_utf8_lossy(&decrypted));
+        } else {
+            println!("done: {}", String::from_utf8_lossy(&decrypted));
+            break;
+        }
     }
-
-    // Knowing the block size, craft an input block that is exactly 1
-    // byte short (for instance, if the block size is 8 bytes, make
-    // "AAAAAAA"). Think about what the oracle function is going to put in
-    // that last byte position.
-    //
-    // Make a dictionary of every possible last byte by feeding
-    // different strings to the oracle; for instance, "AAAAAAAA",
-    // "AAAAAAAB", "AAAAAAAC", remembering the first block of each invocation.
-    //
-    // Match the output of the one-byte-short input to one of the
-    // entries in your dictionary. You've now discovered the first
-    // byte of unknown-string.
-    //
-    // Repeat for the next byte.
 }
 
 fn generate_random_string(length: usize) -> String {
@@ -64,9 +63,20 @@ fn generate_random_string(length: usize) -> String {
     random_string
 }
 
-fn build_rainbow_table(blocksize: usize, key: &[u8]) -> HashMap<Vec<u8>, u8> {
+fn build_rainbow_table(
+    blocksize: usize,
+    key: &[u8],
+    known_text: Option<Vec<u8>>,
+) -> HashMap<Vec<u8>, u8> {
     let mut table = HashMap::new();
-    let text = vec!['A' as u8; blocksize - 1];
+    let mut text;
+    if let Some(base_text) = known_text {
+        let pad_len = blocksize.saturating_sub(base_text.len());
+        text = vec!['A' as u8; pad_len - 1];
+        text.extend_from_slice(&base_text);
+    } else {
+        text = vec!['A' as u8; blocksize - 1];
+    }
 
     for byte in 0..=255 {
         let mut plaintext = text.clone();
