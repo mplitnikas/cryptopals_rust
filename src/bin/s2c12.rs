@@ -25,7 +25,7 @@ fn main() {
     }
 
     let mut decrypted: Vec<u8> = vec![];
-    let mut i = 0;
+    let mut i = 1;
     loop {
         let base_text;
         if decrypted.is_empty() {
@@ -40,7 +40,7 @@ fn main() {
         if let Some(res) = table.get(&cyphertext[0..blocksize]) {
             decrypted.push(*res);
             i += 1;
-            println!("found {}", *res as char);
+            // println!("found {}", *res as char);
             println!("{}", String::from_utf8_lossy(&decrypted));
         } else {
             println!("done: {}", String::from_utf8_lossy(&decrypted));
