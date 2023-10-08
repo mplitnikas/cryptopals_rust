@@ -42,7 +42,7 @@ fn main() {
                 decrypted.push(*res);
                 print!("{}", *res as char);
             } else {
-                panic!("error matching decrypted byte");
+                break;
             }
         }
         block_offset += 1;
