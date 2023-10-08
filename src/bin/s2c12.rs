@@ -24,29 +24,53 @@ fn main() {
         }
     }
 
+    let target_string = aes::pkcs7_pad(&target_string, blocksize);
+
     let mut decrypted: Vec<u8> = vec![];
-    let mut i = 1;
+    let mut block_offset = 0;
     loop {
-        let base_text;
-        if decrypted.is_empty() {
-            base_text = None;
-        } else {
-            base_text = Some(decrypted.clone());
+        for index in 1..=blocksize {
+            let target_chunk =
+                &target_string[block_offset * blocksize..block_offset * blocksize + blocksize];
+
+            let mut local_decrypted: Vec<u8> = vec![];
+            local_decrypted.extend(&decrypted[block_offset * blocksize..]);
+
+            let table = build_rainbow_table(blocksize, &random_key, &local_decrypted);
+            let mut test_text = vec!['A' as u8; blocksize - index];
+            test_text.extend(target_chunk);
+            let cyphertext = aes::ecb_encrypt(&test_text, random_key);
+            if let Some(res) = table.get(&cyphertext[0..blocksize]) {
+                decrypted.push(*res);
+                println!("{}", String::from_utf8_lossy(&decrypted));
+            } else {
+                println!(
+                    "==============done: {}",
+                    String::from_utf8_lossy(&decrypted)
+                );
+                // break;
+            }
         }
-        let table = build_rainbow_table(blocksize, random_key, base_text);
-        let mut test_text = vec!['A' as u8; blocksize - i];
-        test_text.extend(target_string.clone());
-        let cyphertext = aes::ecb_encrypt(&test_text, random_key);
-        if let Some(res) = table.get(&cyphertext[0..blocksize]) {
-            decrypted.push(*res);
-            i += 1;
-            // println!("found {}", *res as char);
-            println!("{}", String::from_utf8_lossy(&decrypted));
-        } else {
-            println!("done: {}", String::from_utf8_lossy(&decrypted));
-            break;
-        }
+        block_offset += 1;
     }
+}
+
+fn build_rainbow_table(blocksize: usize, key: &[u8], known_block: &[u8]) -> HashMap<Vec<u8>, u8> {
+    let mut table = HashMap::new();
+    let mut text;
+    let pad_len = blocksize.saturating_sub(known_block.len() + 1);
+    text = vec!['A' as u8; pad_len];
+    text.extend_from_slice(&known_block);
+
+    for byte in 0..=255 {
+        let mut plaintext = text.clone();
+        plaintext.extend([byte]);
+        let cyphertext = aes::ecb_encrypt(&plaintext, key);
+
+        table.insert(cyphertext, byte);
+    }
+
+    table
 }
 
 fn generate_random_string(length: usize) -> String {
@@ -61,30 +85,4 @@ fn generate_random_string(length: usize) -> String {
         })
         .collect();
     random_string
-}
-
-fn build_rainbow_table(
-    blocksize: usize,
-    key: &[u8],
-    known_text: Option<Vec<u8>>,
-) -> HashMap<Vec<u8>, u8> {
-    let mut table = HashMap::new();
-    let mut text;
-    if let Some(base_text) = known_text {
-        let pad_len = blocksize.saturating_sub(base_text.len());
-        text = vec!['A' as u8; pad_len - 1];
-        text.extend_from_slice(&base_text);
-    } else {
-        text = vec!['A' as u8; blocksize - 1];
-    }
-
-    for byte in 0..=255 {
-        let mut plaintext = text.clone();
-        plaintext.extend([byte]);
-        let cyphertext = aes::ecb_encrypt(&plaintext, key);
-
-        table.insert(cyphertext, byte);
-    }
-
-    table
 }
