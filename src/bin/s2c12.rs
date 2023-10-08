@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use cryptopals::common::{aes, caesar, utils};
-use rand::{random, Rng};
+use cryptopals::common::{aes, utils};
+use rand::Rng;
 
 fn main() {
     let target_string = "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK";
@@ -28,31 +28,27 @@ fn main() {
 
     let mut decrypted: Vec<u8> = vec![];
     let mut block_offset = 0;
-    loop {
+    for target_chunk in target_string.chunks(blocksize) {
         for index in 1..=blocksize {
-            let target_chunk =
-                &target_string[block_offset * blocksize..block_offset * blocksize + blocksize];
-
             let mut local_decrypted: Vec<u8> = vec![];
             local_decrypted.extend(&decrypted[block_offset * blocksize..]);
 
             let table = build_rainbow_table(blocksize, &random_key, &local_decrypted);
+
             let mut test_text = vec!['A' as u8; blocksize - index];
             test_text.extend(target_chunk);
             let cyphertext = aes::ecb_encrypt(&test_text, random_key);
+
             if let Some(res) = table.get(&cyphertext[0..blocksize]) {
                 decrypted.push(*res);
-                println!("{}", String::from_utf8_lossy(&decrypted));
+                print!("{}", *res as char);
             } else {
-                println!(
-                    "==============done: {}",
-                    String::from_utf8_lossy(&decrypted)
-                );
-                // break;
+                panic!("error matching decrypted byte");
             }
         }
         block_offset += 1;
     }
+    println!("\nDone!\n{}", String::from_utf8_lossy(&decrypted));
 }
 
 fn build_rainbow_table(blocksize: usize, key: &[u8], known_block: &[u8]) -> HashMap<Vec<u8>, u8> {
