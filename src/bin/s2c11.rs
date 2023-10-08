@@ -1,4 +1,4 @@
-use cryptopals::common::aes;
+use cryptopals::common::{aes, utils};
 use rand::{random, Rng};
 
 fn main() {
@@ -14,14 +14,13 @@ fn main() {
 }
 
 fn encrypt_with_random_mode(data: &[u8]) -> (Vec<u8>, bool) {
-    let key = generate_random_string(16);
-    let key = key.as_bytes();
+    let key = &aes::random_aes_key();
     let mut rnd = rand::thread_rng();
 
     let mut plaintext = vec![];
-    plaintext.extend(generate_random_string(rnd.gen_range(5..=10)).as_bytes());
+    plaintext.extend(utils::generate_random_string(rnd.gen_range(5..=10)).as_bytes());
     plaintext.extend(data);
-    plaintext.extend(generate_random_string(rnd.gen_range(5..=10)).as_bytes());
+    plaintext.extend(utils::generate_random_string(rnd.gen_range(5..=10)).as_bytes());
 
     let use_cbc = random(); // true->cbc, false->ecb
 
@@ -36,18 +35,4 @@ fn encrypt_with_random_mode(data: &[u8]) -> (Vec<u8>, bool) {
         cyphertext = aes::ecb_encrypt(&plaintext, key);
     }
     (cyphertext, use_cbc)
-}
-
-fn generate_random_string(length: usize) -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                             abcdefghijklmnopqrstuvwxyz\
-                             0123456789";
-    let mut rng = rand::thread_rng();
-    let random_string: String = (0..length)
-        .map(|_| {
-            let idx = rng.gen_range(0..CHARSET.len());
-            CHARSET[idx] as char
-        })
-        .collect();
-    random_string
 }

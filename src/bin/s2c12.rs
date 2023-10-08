@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
 use cryptopals::common::{aes, utils};
-use rand::Rng;
 
 fn main() {
     let target_string = "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK";
     let target_string = utils::b64_to_bytes(target_string);
-    let random_key = &generate_random_string(16).as_bytes().to_vec();
+    let random_key = &aes::random_aes_key();
 
     let mut blocksize = 0;
     for size in 2..40 {
@@ -67,18 +66,4 @@ fn build_rainbow_table(blocksize: usize, key: &[u8], known_block: &[u8]) -> Hash
     }
 
     table
-}
-
-fn generate_random_string(length: usize) -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                             abcdefghijklmnopqrstuvwxyz\
-                             0123456789";
-    let mut rng = rand::thread_rng();
-    let random_string: String = (0..length)
-        .map(|_| {
-            let idx = rng.gen_range(0..CHARSET.len());
-            CHARSET[idx] as char
-        })
-        .collect();
-    random_string
 }

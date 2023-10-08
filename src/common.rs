@@ -1,6 +1,7 @@
 pub mod utils {
     use base64::{engine::general_purpose, Engine as _};
     use hex;
+    use rand::Rng;
     use std::fs;
     use std::path::Path;
 
@@ -47,6 +48,20 @@ pub mod utils {
             .zip(b.iter())
             .map(|(x, y)| (x ^ y).count_ones())
             .sum::<u32>() as usize
+    }
+
+    pub fn generate_random_string(length: usize) -> String {
+        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                             abcdefghijklmnopqrstuvwxyz\
+                             0123456789";
+        let mut rng = rand::thread_rng();
+        let random_string: String = (0..length)
+            .map(|_| {
+                let idx = rng.gen_range(0..CHARSET.len());
+                CHARSET[idx] as char
+            })
+            .collect();
+        random_string
     }
 }
 
@@ -314,6 +329,10 @@ pub mod aes {
         } else {
             Mode::Cbc
         }
+    }
+
+    pub fn random_aes_key() -> Vec<u8> {
+        utils::generate_random_string(16).as_bytes().to_vec()
     }
 }
 
